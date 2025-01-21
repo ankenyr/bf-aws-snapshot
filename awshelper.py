@@ -1,4 +1,6 @@
 import boto3
+from botocore.exceptions import ClientError
+import sys
 
 _clients = {}
 _functions = {}
@@ -21,6 +23,44 @@ NON_PAGINATED_METHODS = [ "describe_load_balancer_attributes"
     , "describe_elasticsearch_domains"
     , "search_transit_gateway_routes"
     ]
+
+def get_aws_accounts(account_dict):
+    """
+    Gets all AWS accounts within an AWS organization that the user account has access to.
+    """
+    org_client = boto3.client('organizations')
+    accounts = []
+    try:
+        paginator = org_client.get_paginator('list_accounts')
+        for page in paginator.paginate():
+            accounts.extend(page['Accounts'])
+    except ClientError as e:
+        print(f"Error listing accounts: {e}")
+        sys.exit(1)
+    filter_accounts = [i['id'] for i in account_dict]
+    if filter_accounts:
+        accounts = [account for account in accounts if account['Id'] in filter_accounts]
+    return accounts
+
+def get_aws_sessions(account_id, role):
+    """Assume the OrganizationAccountAccessRole in a given account."""
+    sts_client = boto3.client('sts')
+    try:
+        assumed_role = sts_client.assume_role(
+            RoleArn=f'arn:aws:iam::{account_id}:role/{role}',
+            RoleSessionName='ListVPCsSession'
+        )
+        credentials = assumed_role['Credentials']
+        
+        session = boto3.session.Session(
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+            )
+        return session
+    except ClientError as e:
+        print(f"Error assuming role for account {account_id}: {e}")
+        return None
 
 def _aws_response(region, cli_name, cli_method, args_dict):
     # See https://boto3.amazonaws.com/v1/documentation/api/latest/guide/paginators.html
@@ -145,10 +185,11 @@ def aws_get_regions():
     return _clients.keys()
 
 
-def aws_init(regions=None, vpc_ids=None, skip_data=None, profile=None):
+def aws_init(regions=None, vpc_ids=None, skip_data=None, session=None):
     global _session, _clients, _functions
 
-    _session = boto3.session.Session(profile_name=profile)
+    _session = session
+
 
     if regions is None or len(regions) == 0:
         ec2_client = _get_client('ec2', "us-west-1")
