@@ -1,4 +1,4 @@
-import awshelper
+from bf_aws_snapshot import awshelper
 import boto3
 from argparse import ArgumentParser, ArgumentTypeError
 import json
