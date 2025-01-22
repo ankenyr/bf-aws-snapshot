@@ -88,7 +88,7 @@ def main():
     for session in sessions:
         print(f"Processing account: {session[0]}")
         awshelper.aws_init(regions, vpc_ids, skip_data, session[1])
-        awshelper.snapshot_configs(args.output_folder, session[0])
+        snapshot_configs(args.output_folder, session[0])
 
 if __name__ == '__main__':
     main()
