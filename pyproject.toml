@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "bf_aws_snapshot"
+version = "0.1.0"
+description = "AWS Snapshot tool for use with Batfish."
+authors = ["ratulm"]
+readme = "README.md"
+packages = [{include = "bf_aws_snapshot"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+boto3 = "^1.36.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
